@@ -9,6 +9,12 @@
 </p>
 <br>
 
+## Important Note
+
+Currently, this implementation only supports VAD detection for PCM s16le encoded audio data（**16 bit, 16000hz, pcm**）. 
+
+If you need to use other encodings, you will need to convert your audio data to PCM s16le format before processing or just modify the code to support other encodings.
+
 ## Quick Start
 
 ### Code!
