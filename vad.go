@@ -27,14 +27,15 @@ type VadConfig struct {
 }
 
 type RealTimeVadDetector struct {
-	Sd                  *speech.Detector
-	Config              *VadConfig
-	InputAudioCache     *AudioCache
-	VadAudioCache       *AudioCache
-	VadNotPassChunkSize int
-	isVadSpeaking       bool
-	OnRecvVadAudio      func([]byte, int)
-	isVadStart          bool
+	Sd                   *speech.Detector
+	Config               *VadConfig
+	InputAudioCache      *AudioCache
+	VadAudioCache        *AudioCache
+	VadNotSpeakingFrames [][]byte
+	VadNotPassChunkSize  int
+	isVadSpeaking        bool
+	OnRecvVadAudio       func([]byte, int)
+	isVadStart           bool
 }
 
 var _ IVadDetector = &RealTimeVadDetector{}
@@ -69,10 +70,11 @@ func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int)
 		return nil, err
 	}
 	detector := &RealTimeVadDetector{
-		Sd:              sd,
-		InputAudioCache: NewAudioCache(),
-		VadAudioCache:   NewAudioCache(),
-		OnRecvVadAudio:  callBackFn,
+		Sd:                   sd,
+		InputAudioCache:      NewAudioCache(),
+		VadAudioCache:        NewAudioCache(),
+		OnRecvVadAudio:       callBackFn,
+		VadNotSpeakingFrames: make([][]byte, 0),
 	}
 
 	if config != nil {
@@ -128,11 +130,11 @@ func (v *RealTimeVadDetector) TryVAD() {
 				if v.isVadSpeaking {
 					v.isVadSpeaking = false
 					allVadCache := v.VadAudioCache.GetAll()
-					frameSize := len(allVadCache) / (frameSize)
-					if frameSize > v.Config.MinSpeechFrames {
-						var padSize int64 = int64(v.Config.PreSpeechPadFrames) * int64(frameSize)
-						padedBytes := padPreSpeechBytes(allVadCache, padSize)
+					thisFrameSize := len(allVadCache) / (frameSize)
+					if thisFrameSize > v.Config.MinSpeechFrames {
+						padedBytes := padPreSpeechBytes(allVadCache, v.VadNotSpeakingFrames, v.Config.PreSpeechPadFrames)
 						durationMs := len(padedBytes) / 32
+						v.VadNotSpeakingFrames = make([][]byte, 0)
 						v.OnRecvVadAudio(padedBytes, durationMs)
 					}
 				}
@@ -140,6 +142,8 @@ func (v *RealTimeVadDetector) TryVAD() {
 		}
 		if v.isVadSpeaking {
 			v.VadAudioCache.Put(data)
+		} else {
+			v.VadNotSpeakingFrames = append(v.VadNotSpeakingFrames, data)
 		}
 	}
 }
@@ -167,12 +171,20 @@ func (v *RealTimeVadDetector) PutPcmData(pcmData []byte) {
 	v.InputAudioCache.Put(pcmData)
 }
 
-func padPreSpeechBytes(data []byte, numByte int64) []byte {
-	return data
+func padPreSpeechBytes(data []byte, toPadData [][]byte, frameSize int) []byte {
 	if len(data) == 0 {
 		return data
 	}
-	paddedFrames := make([]byte, numByte)
-
-	return append(paddedFrames, data...)
+	getSize := frameSize
+	toPadFrameSize := len(toPadData)
+	if toPadFrameSize < frameSize {
+		getSize = toPadFrameSize
+	}
+	// 从 toPadData 里面拿出 getSize 个 frame 的数据
+	dataToMerage := toPadData[:getSize]
+	padData := make([]byte, 0)
+	for _, frame := range dataToMerage {
+		padData = append(padData, frame...)
+	}
+	return append(padData, data...)
 }
