@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"gitlab.xaminim.com/data/silero-vad-go/speech"
+	"github.com/Mereithhh/silero-vad-go/speech"
 )
 
 type IVadDetector interface {
@@ -35,6 +35,7 @@ type RealTimeVadDetector struct {
 	VadNotPassChunkSize  int
 	isVadSpeaking        bool
 	OnRecvVadAudio       func([]byte, int)
+	OnStartSpeaking      func()
 	isVadStart           bool
 }
 
@@ -63,7 +64,7 @@ func NewSdVad() (*speech.Detector, error) {
 	return vad, nil
 }
 
-func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int)) (*RealTimeVadDetector, error) {
+func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int), onStartSpeaking func()) (*RealTimeVadDetector, error) {
 	// NewVadDetector implementation
 	sd, err := NewSdVad()
 	if err != nil {
@@ -74,6 +75,7 @@ func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int)
 		InputAudioCache:      NewAudioCache(),
 		VadAudioCache:        NewAudioCache(),
 		OnRecvVadAudio:       callBackFn,
+		OnStartSpeaking:      onStartSpeaking,
 		VadNotSpeakingFrames: make([][]byte, 0),
 	}
 
@@ -123,6 +125,7 @@ func (v *RealTimeVadDetector) TryVAD() {
 			v.VadNotPassChunkSize = 0
 			if !v.isVadSpeaking {
 				v.isVadSpeaking = true
+				v.OnStartSpeaking()
 			}
 		} else if vadResult < v.Config.NegativeSpeechThreshold {
 			v.VadNotPassChunkSize++

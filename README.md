@@ -11,7 +11,7 @@
 
 ## Important Note
 
-Currently, this implementation only supports VAD detection for PCM s16le encoded audio data（**16 bit, 16000hz, pcm**）. 
+Currently, this implementation only supports VAD detection for PCM s16le encoded audio data（**16 bit, 16000hz, pcm**）.
 
 If you need to use other encodings, you will need to convert your audio data to PCM s16le format before processing or just modify the code to support other encodings.
 
@@ -32,12 +32,16 @@ func Demo() {
 
     // when detect speech, this callback will be called
     onVad = func(pcmData []byte, durationMs int) {
-		// onVad implementation
-		fmt.Printf("onVad, duration: %d", durationMs)
-	}
+      // onVad implementation
+      fmt.Printf("onVad, duration: %d", durationMs)
+    }
+
+    onStartSpeaking := func() {
+      fmt.Println("onStartSpeaking")
+    }
 
     // Create a new VAD instance
-    detector := vad.NewRealTimeVadDetector(config, callback)
+    detector := vad.NewRealTimeVadDetector(config, onVad, onStartSpeaking)
 
     // start the detector, this function will not block , running in a goroutine
     detector.StartDetect()
@@ -52,6 +56,7 @@ func Demo() {
 ```
 
 ### Install the deps and model file
+
 > if your system is not linux x86_64, you need to download the onnxruntime library from the [official website](https://onnxruntime.ai/docs/build/ep_onnxruntime.html) and copy it to your system lib folder.
 
 ```shell
@@ -63,10 +68,11 @@ sudo cp ./model_file/* /usr/local/share/vad_model/
 ```
 
 ### With Dockerfile
+
 > if your system is not linux x86_64, you need to download the onnxruntime library from the [official website](https://onnxruntime.ai/docs/build/ep_onnxruntime.html) and copy it to your project folder.
 
-
 Copy `onnxruntime` and `model_file` in this project to your project folder, and then add the following lines to your Dockerfile:
+
 ```dockerfile
 COPY  ./onnxruntime/lib/* /usr/local/lib/
 COPY  ./onnxruntime/include/* /usr/local/include/
@@ -77,6 +83,7 @@ COPY ./model_file/* /usr/local/share/vad_model
 ```
 
 ## Requirements
+
 - [Golang](https://go.dev/doc/install) >= v1.21
 - A C compiler (e.g. GCC)
 - ONNX Runtime
@@ -102,12 +109,12 @@ This project is inspired by [ricky0123/vad](https://github.com/ricky0123/vad), a
 
 ## Configuration
 
-+   `positiveSpeechThreshold: number` - determines the threshold over which a probability is considered to indicate the presence of speech.
-+   `negativeSpeechThreshold: number` - determines the threshold under which a probability is considered to indicate the absence of speech.
-+   `redemptionFrames: number` - number of speech-negative frames to wait before ending a speech segment.
-+   `frameSamples: number` - the size of a frame in samples - 1536 by default and probably should not be changed.
-+   `preSpeechPadFrames: number` - number of audio frames to prepend to a speech segment.
-+   `minSpeechFrames: number` - minimum number of speech-positive frames for a speech segment.
+- `positiveSpeechThreshold: number` - determines the threshold over which a probability is considered to indicate the presence of speech.
+- `negativeSpeechThreshold: number` - determines the threshold under which a probability is considered to indicate the absence of speech.
+- `redemptionFrames: number` - number of speech-negative frames to wait before ending a speech segment.
+- `frameSamples: number` - the size of a frame in samples - 1536 by default and probably should not be changed.
+- `preSpeechPadFrames: number` - number of audio frames to prepend to a speech segment.
+- `minSpeechFrames: number` - minimum number of speech-positive frames for a speech segment.
 
 ## License
 

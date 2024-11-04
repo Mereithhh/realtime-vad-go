@@ -16,7 +16,10 @@ func TestVad(t *testing.T) {
 		// onVad implementation
 		t.Logf("onVad, duration: %d", durationMs)
 	}
-	vad, err := vad.NewRealTimeVadDetector(config, onVad)
+	onStartSpeaking := func() {
+		t.Log("onStartSpeaking")
+	}
+	vad, err := vad.NewRealTimeVadDetector(config, onVad, onStartSpeaking)
 	if err != nil {
 		t.Fatal(err)
 		return
