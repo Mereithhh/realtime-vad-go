@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"runtime"
+	"sync/atomic"
 	"time"
 
 	"github.com/Mereithhh/silero-vad-go/speech"
@@ -39,6 +40,7 @@ type RealTimeVadDetector struct {
 	OnRecvVadAudio       func([]byte, int)
 	OnStartSpeaking      func()
 	done                 chan struct{}
+	isClosed             int32
 }
 
 var _ IVadDetector = &RealTimeVadDetector{}
@@ -80,6 +82,7 @@ func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int)
 		OnStartSpeaking:      onStartSpeaking,
 		VadNotSpeakingFrames: make([][]byte, 0),
 		done:                 make(chan struct{}),
+		isClosed:             0,
 	}
 
 	if config != nil {
@@ -183,7 +186,11 @@ func (v *RealTimeVadDetector) StartDetect(ctx context.Context) {
 }
 
 func (v *RealTimeVadDetector) Close() error {
+	if atomic.LoadInt32(&v.isClosed) == 1 {
+		return nil
+	}
 	close(v.done)
+	atomic.StoreInt32(&v.isClosed, 1)
 	return nil
 }
 
