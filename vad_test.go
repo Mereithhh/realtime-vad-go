@@ -39,7 +39,7 @@ func TestVad(t *testing.T) {
 		vad.PutPcmData(pcmData)
 	}
 	time.Sleep(10 * time.Second)
-	err = vad.StopDetect()
+	err = vad.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

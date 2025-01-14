@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"runtime"
 	"time"
 
 	"github.com/Mereithhh/silero-vad-go/speech"
@@ -14,7 +15,7 @@ type IVadDetector interface {
 	DetectPcmAtom(pcmData []byte, channelNum int64, sampleRate int64, bitSize int64) (float32, error)
 	StartDetect(ctx context.Context)
 	PutPcmData(pcmData []byte)
-	StopDetect() error
+	Close() error
 }
 
 type VadConfig struct {
@@ -37,7 +38,7 @@ type RealTimeVadDetector struct {
 	isVadSpeaking        bool
 	OnRecvVadAudio       func([]byte, int)
 	OnStartSpeaking      func()
-	isVadStart           bool
+	done                 chan struct{}
 }
 
 var _ IVadDetector = &RealTimeVadDetector{}
@@ -67,7 +68,6 @@ func NewSdVad() (*speech.Detector, error) {
 }
 
 func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int), onStartSpeaking func()) (*RealTimeVadDetector, error) {
-	// NewVadDetector implementation
 	sd, err := NewSdVad()
 	if err != nil {
 		return nil, err
@@ -79,6 +79,7 @@ func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int)
 		OnRecvVadAudio:       callBackFn,
 		OnStartSpeaking:      onStartSpeaking,
 		VadNotSpeakingFrames: make([][]byte, 0),
+		done:                 make(chan struct{}),
 	}
 
 	if config != nil {
@@ -86,6 +87,13 @@ func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int)
 	} else {
 		detector.Config = &DefaultVadConfig
 	}
+
+	runtime.SetFinalizer(detector, func(v *RealTimeVadDetector) {
+		if v.Sd != nil {
+			v.Sd.Destroy()
+		}
+	})
+
 	return detector, nil
 }
 
@@ -158,15 +166,13 @@ func (v *RealTimeVadDetector) TryVAD() {
 }
 
 func (v *RealTimeVadDetector) StartFn(ctx context.Context) {
-	v.isVadStart = true
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-v.done:
+			return
 		default:
-			if !v.isVadStart {
-				return
-			}
 			v.TryVAD()
 			time.Sleep(v.Config.VadInterval)
 		}
@@ -176,16 +182,8 @@ func (v *RealTimeVadDetector) StartDetect(ctx context.Context) {
 	go v.StartFn(ctx)
 }
 
-func (v *RealTimeVadDetector) StopDetect() error {
-	v.isVadStart = false
-	v.InputAudioCache.Clear()
-	v.VadAudioCache.Clear()
-	v.VadNotSpeakingFrames = make([][]byte, 0)
-	v.VadNotPassChunkSize = 0
-	err := v.Sd.Destroy()
-	if err != nil {
-		return err
-	}
+func (v *RealTimeVadDetector) Close() error {
+	close(v.done)
 	return nil
 }
 
