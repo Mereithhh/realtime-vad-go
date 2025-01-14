@@ -14,7 +14,7 @@ type IVadDetector interface {
 	DetectPcmAtom(pcmData []byte, channelNum int64, sampleRate int64, bitSize int64) (float32, error)
 	StartDetect(ctx context.Context)
 	PutPcmData(pcmData []byte)
-	StopDetect()
+	StopDetect() error
 }
 
 type VadConfig struct {
@@ -62,6 +62,7 @@ func NewSdVad() (*speech.Detector, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return vad, nil
 }
 
@@ -175,12 +176,17 @@ func (v *RealTimeVadDetector) StartDetect(ctx context.Context) {
 	go v.StartFn(ctx)
 }
 
-func (v *RealTimeVadDetector) StopDetect() {
+func (v *RealTimeVadDetector) StopDetect() error {
 	v.isVadStart = false
 	v.InputAudioCache.Clear()
 	v.VadAudioCache.Clear()
 	v.VadNotSpeakingFrames = make([][]byte, 0)
 	v.VadNotPassChunkSize = 0
+	err := v.Sd.Destroy()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (v *RealTimeVadDetector) PutPcmData(pcmData []byte) {
