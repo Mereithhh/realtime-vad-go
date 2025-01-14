@@ -1,6 +1,7 @@
 package vad
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -11,7 +12,7 @@ import (
 
 type IVadDetector interface {
 	DetectPcmAtom(pcmData []byte, channelNum int64, sampleRate int64, bitSize int64) (float32, error)
-	StartDetect()
+	StartDetect(ctx context.Context)
 	PutPcmData(pcmData []byte)
 	StopDetect()
 }
@@ -146,28 +147,40 @@ func (v *RealTimeVadDetector) TryVAD() {
 		if v.isVadSpeaking {
 			v.VadAudioCache.Put(data)
 		} else {
+			maxFrames := v.Config.PreSpeechPadFrames
+			if len(v.VadNotSpeakingFrames) >= maxFrames {
+				v.VadNotSpeakingFrames = v.VadNotSpeakingFrames[1:]
+			}
 			v.VadNotSpeakingFrames = append(v.VadNotSpeakingFrames, data)
 		}
 	}
 }
 
-func (v *RealTimeVadDetector) StartFn() {
+func (v *RealTimeVadDetector) StartFn(ctx context.Context) {
 	v.isVadStart = true
 	for {
-		if !v.isVadStart {
-			break
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if !v.isVadStart {
+				return
+			}
+			v.TryVAD()
+			time.Sleep(v.Config.VadInterval)
 		}
-		v.TryVAD()
-		time.Sleep(v.Config.VadInterval)
 	}
 }
-func (v *RealTimeVadDetector) StartDetect() {
-	go v.StartFn()
+func (v *RealTimeVadDetector) StartDetect(ctx context.Context) {
+	go v.StartFn(ctx)
 }
 
 func (v *RealTimeVadDetector) StopDetect() {
+	v.isVadStart = false
 	v.InputAudioCache.Clear()
 	v.VadAudioCache.Clear()
+	v.VadNotSpeakingFrames = make([][]byte, 0)
+	v.VadNotPassChunkSize = 0
 }
 
 func (v *RealTimeVadDetector) PutPcmData(pcmData []byte) {

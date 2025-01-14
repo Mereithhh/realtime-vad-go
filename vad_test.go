@@ -1,6 +1,7 @@
 package vad_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -15,20 +16,26 @@ func TestVad(t *testing.T) {
 	onVad := func(pcmData []byte, durationMs int) {
 		// onVad implementation
 		t.Logf("onVad, duration: %d", durationMs)
+		os.WriteFile(fmt.Sprintf("./%d.pcm", durationMs), pcmData, 0644)
 	}
 	onStartSpeaking := func() {
-		t.Log("onStartSpeaking")
+		t.Log("onStartSpeaking1")
 	}
 	vad, err := vad.NewRealTimeVadDetector(config, onVad, onStartSpeaking)
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	vad.StartDetect()
+	ctx, cancel := context.WithCancel(context.Background())
+	vad.StartDetect(ctx)
+	go func() {
+		time.Sleep(10 * time.Second)
+		cancel()
+	}()
 
 	pcmData := loadPcm()
 	// send pcm data
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		vad.PutPcmData(pcmData)
 	}
 	time.Sleep(10 * time.Second)
@@ -36,7 +43,7 @@ func TestVad(t *testing.T) {
 }
 
 func loadPcm() []byte {
-	data, _ := os.ReadFile("./test.wav")
+	data, _ := os.ReadFile("./query.wav")
 	pcmData, _ := wavToPCM(data)
 	return pcmData
 }
