@@ -1,7 +1,6 @@
 package vad_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -26,12 +25,7 @@ func TestVad(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	vad.StartDetect(ctx)
-	go func() {
-		time.Sleep(10 * time.Second)
-		cancel()
-	}()
+	vad.StartDetect()
 
 	pcmData := loadPcm()
 	// send pcm data

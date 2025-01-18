@@ -1,7 +1,6 @@
 package vad
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -14,7 +13,7 @@ import (
 
 type IVadDetector interface {
 	DetectPcmAtom(pcmData []byte, channelNum int64, sampleRate int64, bitSize int64) (float32, error)
-	StartDetect(ctx context.Context)
+	StartDetect()
 	PutPcmData(pcmData []byte)
 	Close() error
 }
@@ -168,11 +167,9 @@ func (v *RealTimeVadDetector) TryVAD() {
 	}
 }
 
-func (v *RealTimeVadDetector) StartFn(ctx context.Context) {
+func (v *RealTimeVadDetector) StartFn() {
 	for {
 		select {
-		case <-ctx.Done():
-			return
 		case <-v.done:
 			return
 		default:
@@ -181,8 +178,8 @@ func (v *RealTimeVadDetector) StartFn(ctx context.Context) {
 		}
 	}
 }
-func (v *RealTimeVadDetector) StartDetect(ctx context.Context) {
-	go v.StartFn(ctx)
+func (v *RealTimeVadDetector) StartDetect() {
+	go v.StartFn()
 }
 
 func (v *RealTimeVadDetector) Close() error {
