@@ -45,20 +45,19 @@ type RealTimeVadDetector struct {
 var _ IVadDetector = &RealTimeVadDetector{}
 
 var DefaultVadConfig = VadConfig{
-	PositiveSpeechThreshold: 0.85,
+	PositiveSpeechThreshold: 0.65,
 	NegativeSpeechThreshold: 0.35,
-	RedemptionFrames:        8, // 8x96ms = 768ms
-	MinSpeechFrames:         3, // 3x96ms = 288ms
+	RedemptionFrames:        8, // 8x32ms = 256ms
+	MinSpeechFrames:         3, // 3x32ms = 96ms
 	PreSpeechPadFrames:      1,
-	FrameSamples:            1536, // 96ms
-	VadInterval:             32 * time.Millisecond,
+	FrameSamples:            512, // 32ms
+	VadInterval:             10 * time.Millisecond,
 }
 
 func NewSdVad() (*speech.Detector, error) {
 	vad, err := speech.NewDetector(speech.DetectorConfig{
 		ModelPath:  "/usr/local/share/vad_model/silero_vad.onnx",
 		SampleRate: 16000,
-		WindowSize: 1536,
 		Threshold:  0.5,
 	})
 	if err != nil {

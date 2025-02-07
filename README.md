@@ -50,7 +50,7 @@ func Demo() {
     vad.PutPcmData(pcmData)
 
     // stop
-    vad.StopDetect()
+    vad.Close()
 }
 
 ```
