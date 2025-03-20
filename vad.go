@@ -16,6 +16,8 @@ type IVadDetector interface {
 	StartDetect()
 	PutPcmData(pcmData []byte)
 	Close() error
+	GetInputCache() *AudioCache
+	GetSpeakingCache() *AudioCache
 }
 
 type VadConfig struct {
@@ -97,6 +99,14 @@ func NewRealTimeVadDetector(config *VadConfig, callBackFn func(b []byte, ms int)
 	})
 
 	return detector, nil
+}
+
+func (v *RealTimeVadDetector) GetInputCache() *AudioCache {
+	return v.InputAudioCache
+}
+
+func (v *RealTimeVadDetector) GetSpeakingCache() *AudioCache {
+	return v.VadAudioCache
 }
 
 // 探测给定的 pcm 数据中是否包含了人声的可能性, 最后送入模型的是f32le,16k,1channel = 4byte
