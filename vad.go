@@ -17,7 +17,7 @@ type IVadDetector interface {
 	PutPcmData(pcmData []byte)
 	Close() error
 	GetInputCache() *AudioCache
-	GetSpeckingCache() *AudioCache
+	GetSpeakingCache() *AudioCache
 }
 
 type VadConfig struct {
@@ -105,7 +105,7 @@ func (v *RealTimeVadDetector) GetInputCache() *AudioCache {
 	return v.InputAudioCache
 }
 
-func (v *RealTimeVadDetector) GetSpeckingCache() *AudioCache {
+func (v *RealTimeVadDetector) GetSpeakingCache() *AudioCache {
 	return v.VadAudioCache
 }
 
